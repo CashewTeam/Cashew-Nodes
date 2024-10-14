@@ -1,6 +1,6 @@
 bl_info = {
     "name": "Cashew Nodes 腰果节点组",
-    "version": (2, 0, 0),
+    "version": (0, 2, 2),
     "blender": (3, 0, 0),
     "category": "Assets",
 }
