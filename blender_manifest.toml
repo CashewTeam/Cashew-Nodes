@@ -3,7 +3,7 @@ schema_version = "1.0.0"
 # Example of manifest file for a Blender extension
 # Change the values according to your extension
 id = "cashew_nodes"
-version = "2.0.0"
+version = "1.1.0"
 name = "Cashew Nodes 腰果节点组"
 tagline = "实用几何节点、三渲二节点组"
 maintainer = "Con11 <email@address.com>"
