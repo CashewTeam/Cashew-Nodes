@@ -6,6 +6,9 @@ https://www.blendermarket.com/products/erintools
 
 
 更新日志：
+Alpha 1.0
+将新版的着色器和三渲二等功能移植到旧版，新增goo engine专用节点。
+
 Alpha 0.2.1
 新增节点：弯曲、扭曲、斜切、锥化膨胀、矢量角度转弧度、获取面切向
 调整和优化：修复了面变换和相关节点（多边形FX、运动挤压）在面不是90°时不能正常按照面的XY轴方向变换的问题
