@@ -4,6 +4,9 @@ Cashew Nodes（原B4D）是一个由Con11制作的一个Blender节点组资产�
 https://www.blendermarket.com/products/erintools
 
 更新日志：
+Beta1.1.2
+重新打包，修复一些节点丢失。
+
 Beta1.1.1
 移除了合成器辉光中的alpha设置节点，防止部分色彩模式显示不正常；
 兰伯特和布林冯使用凹凸节点实现自动输入法向。
