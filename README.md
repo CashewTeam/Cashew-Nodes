@@ -7,7 +7,7 @@ Cashew Nodes（原B4D）是一个由Con11制作的一个Blender节点组资产�
 https://www.blendermarket.com/products/erintools  
 
 ## 当前版本
-V1.2 — 适用于六分仪 Blender NPR 分支 [Porting Goo Engine and NPR prototype to Blender 5.1](https://github.com/bb-yi/blender)
+V1.3 — 适用于六分仪 Blender NPR 分支 [Porting Goo Engine and NPR prototype to Blender 5.1](https://github.com/bb-yi/blender)
 
 ## 文件结构
 ```
