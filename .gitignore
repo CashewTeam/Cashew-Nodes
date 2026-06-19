@@ -2,3 +2,5 @@
 *.code-workspace
 *.blend1
 *.txt~
+__pycache__/
+.DS_Store
