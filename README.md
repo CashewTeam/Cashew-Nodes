@@ -1,13 +1,13 @@
 # Cashew-Nodes（原B4D）
 
 Cashew Nodes（原B4D）是一个由Con11制作的一个Blender节点组资产库，旨在补充和拓展Blender的功能，简化几何节点的操作，提高用户使用Blender制作动态图形和卡通渲染的效率。  
-使用 [Blender-Assets-to-Add-on](https://github.com/CashewTeam/Blender-Assets-to-Add-on) 构建。  
 
-本资产库中带由ETK字样的节点组来自Erindale制作的Erindale Toolkit：  
-https://www.blendermarket.com/products/erintools  
+节点文档：[docs.cashewteam.top](https://docs.cashewteam.top/docs/Cashew%20Nodes/)
 
 ## 当前版本
-V1.3 — 适用于六分仪 Blender NPR 分支 [Porting Goo Engine and NPR prototype to Blender 5.1](https://github.com/bb-yi/blender)
+V1.3 — 适用于六分仪 Blender NPR 分支
+
+ [Porting Goo Engine and NPR prototype to Blender 5.1](https://github.com/bb-yi/blender)
 
 ## 文件结构
 ```
@@ -25,3 +25,8 @@ Cashew-Nodes/
 
 ## 已知问题
 1. 破碎FX的样条模式还未制作
+
+## 相关项目
+- 构建工具：[Blender-Assets-to-Add-on](https://github.com/CashewTeam/Blender-Assets-to-Add-on)
+- 六分仪 Blender NPR 分支 [Porting Goo Engine and NPR prototype to Blender 5.1](https://github.com/bb-yi/blender)
+- 本库中 ETK 节点组来自 [Erindale Toolkit](https://www.blendermarket.com/products/erintools)
