@@ -60,7 +60,7 @@ license = [
 #
 [permissions]
 # network = "Need to sync motion-capture data to server"
-files = "To access nodes from .blend file."
+files = "To access nodes from .blend file"
 # clipboard = "Copy and paste bone transforms"
 
 # # Optional: advanced build settings.
