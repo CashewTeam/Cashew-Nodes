@@ -3,7 +3,7 @@ name: Publish Blender repositories
 on:
   push:
     branches:
-      - For_5.1_NPR
+      - For_5.2_NPR
   workflow_dispatch:
 
 permissions:
@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   deploy:
-    if: github.ref_name == 'For_5.1_NPR'
+    if: github.ref_name == 'For_5.2_NPR'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -48,9 +48,9 @@ jobs:
           set -euo pipefail
           version="$(sed -n 's/^version = "\([^"]*\)"$/\1/p' blender_manifest.toml)"
           branch_name="$GITHUB_REF_NAME"
-          archive="Addon_releases/5.1/Cashew_Nodes_${version}_${branch_name}.zip"
+          archive="Addon_releases/new/Cashew_Nodes_${version}_${branch_name}.zip"
           test -n "$version"
-          mkdir -p Addon_releases/5.1
+          mkdir -p Addon_releases/new
           build_source="$RUNNER_TEMP/cashew-nodes-source"
           mkdir -p "$build_source"
           rsync -a --exclude='Addon_releases/' "$GITHUB_WORKSPACE/" "$build_source/"
@@ -92,13 +92,12 @@ jobs:
                   match = re.search(r"(?<!\d)\d+(?:\.\d+)+", path.stem)
                   return tuple(int(part) for part in match.group().split(".")) if match else ()
 
-          for directory in sorted({path.parent for path in Path("Addon_releases").rglob("*.zip")}):
-              packages = sorted(
-                  path for path in directory.glob("*.zip")
-                  if path.stem.casefold().replace("-", "_").startswith("cashew_nodes")
-              )
-              if len(packages) < 2:
-                  continue
+          new_dir = Path("Addon_releases/new")
+          packages = sorted(
+              path for path in new_dir.glob("*.zip")
+              if path.stem.casefold().replace("-", "_").startswith("cashew_nodes")
+          )
+          if len(packages) > 1:
               keep = max(packages, key=lambda path: (version(path), path.name))
               for package in packages:
                   if package != keep:
