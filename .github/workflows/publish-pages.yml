@@ -1,0 +1,163 @@
+name: Publish Blender repositories
+
+on:
+  push:
+    branches:
+      - For_5.1_NPR
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Install Blender 5.2 LTS
+        shell: bash
+        run: |
+          set -euo pipefail
+          blender_version="5.2.0"
+          blender_archive="blender-${blender_version}-linux-x64.tar.xz"
+          blender_url="https://download.blender.org/release/Blender5.2/${blender_archive}"
+          curl --fail --location --retry 3 "$blender_url" --output "$RUNNER_TEMP/$blender_archive"
+          tar -xJf "$RUNNER_TEMP/$blender_archive" -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/blender-${blender_version}-linux-x64" >> "$GITHUB_PATH"
+
+      - name: Prepare repository files
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p site/extensions site/assets
+
+          while IFS= read -r -d '' archive; do
+            if [[ "$archive" == "Addon_releases/archive/Cashew-Nodes  Alpha 1.0 For 3.6.zip" ]]; then
+              continue
+            fi
+
+            archive_name="$(basename "$archive")"
+            target="site/extensions/$archive_name"
+            if [[ -e "$target" ]]; then
+              echo "Duplicate extension archive name: $archive_name" >&2
+              exit 1
+            fi
+            cp "$archive" "$target"
+          done < <(find Addon_releases -type f -name '*.zip' -print0 | sort -z)
+
+          cp Cashew_Nodes_Library/Cashew_Nodes.blend site/assets/
+          cp Cashew_Nodes_Library/NPR.blend site/assets/
+          cp Cashew_Nodes_Library/blender_assets.cats.txt site/assets/
+          touch site/.nojekyll
+
+      - name: Generate extension repository listing
+        shell: bash
+        run: |
+          set -euo pipefail
+          blender --background --factory-startup \
+            --command extension server-generate \
+            --repo-dir="$GITHUB_WORKSPACE/site/extensions" \
+            --html
+
+      - name: Generate remote asset listing
+        shell: bash
+        run: |
+          set -euo pipefail
+          blender -q -b -c asset_listing generate "$GITHUB_WORKSPACE/site/assets"
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          meta_path = Path("site/assets/_asset-library-meta.json")
+          meta = json.loads(meta_path.read_text(encoding="utf-8"))
+          meta["name"] = "Cashew Nodes Library"
+          meta["contact"] = {
+              "name": "CashewTeam",
+              "url": "https://github.com/CashewTeam/Cashew_Nodes",
+              "email": "cashewteam@outlook.com",
+          }
+          meta_path.write_text(
+              json.dumps(meta, ensure_ascii=False, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          PY
+
+      - name: Validate generated repositories
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib
+          import json
+          import zipfile
+          from pathlib import Path
+
+          root = Path("site")
+          extension_dir = root / "extensions"
+          expected_archives = {
+              path.name
+              for path in Path("Addon_releases").rglob("*.zip")
+              if path.as_posix()
+              != "Addon_releases/archive/Cashew-Nodes  Alpha 1.0 For 3.6.zip"
+          }
+          published_archives = {path.name for path in extension_dir.glob("*.zip")}
+          assert published_archives == expected_archives, (
+              published_archives,
+              expected_archives,
+          )
+
+          for archive in sorted(extension_dir.glob("*.zip")):
+              with zipfile.ZipFile(archive) as package:
+                  assert any(
+                      Path(member).name == "blender_manifest.toml"
+                      for member in package.namelist()
+                  ), archive
+
+          extension_index = json.loads(
+              (extension_dir / "index.json").read_text(encoding="utf-8")
+          )
+          listed_archives = {
+              Path(item["archive_url"].split("?", 1)[0]).name
+              for item in extension_index["data"]
+          }
+          assert listed_archives == expected_archives, (
+              listed_archives,
+              expected_archives,
+          )
+
+          asset_root = root / "assets"
+          asset_index = asset_root / "_v1/asset-index.json"
+          meta = json.loads(
+              (asset_root / "_asset-library-meta.json").read_text(encoding="utf-8")
+          )
+          version = meta["api_versions"]["v1"]
+          assert version["url"] == "_v1/asset-index.json"
+          actual_hash = hashlib.sha256(asset_index.read_bytes()).hexdigest()
+          assert version["hash"].lower() == f"sha256:{actual_hash}"
+          assert (asset_root / "Cashew_Nodes.blend").is_file()
+          assert (asset_root / "NPR.blend").is_file()
+          PY
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

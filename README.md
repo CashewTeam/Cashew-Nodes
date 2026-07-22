@@ -9,6 +9,26 @@ V1.3 — 适用于六分仪 Blender NPR 分支
 
  [Porting Goo Engine and NPR prototype to Blender 5.1](https://github.com/bb-yi/blender)
 
+## 远程仓库
+
+GitHub Pages 地址：<https://cashewteam.github.io/Cashew_Nodes/>
+
+### Blender 扩展仓库（4.2+）
+
+在 Blender 中打开 `编辑 > 偏好设置 > 获取扩展 > 仓库`，添加以下远程仓库地址：
+
+<https://cashewteam.github.io/Cashew_Nodes/extensions/index.json>
+
+该仓库包含 `Addon_releases` 中除 3.6 archive 外的所有扩展包，包括 Cashew Nodes 和 VMC Link。
+
+### 远程资产库（5.2+）
+
+在 `编辑 > 偏好设置 > 资产库` 中选择添加远程资产库，填入：
+
+<https://cashewteam.github.io/Cashew_Nodes/assets/>
+
+然后在资产浏览器中选择 `Cashew Nodes Library`，即可按需浏览和下载 `Cashew_Nodes_Library` 中的资产。
+
 ## 文件结构
 ```
 Cashew-Nodes/
