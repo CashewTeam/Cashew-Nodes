@@ -1,9 +1,6 @@
 name: Publish Blender repositories
 
 on:
-  push:
-    branches:
-      - For_5.2_NPR
   workflow_dispatch:
 
 permissions:
