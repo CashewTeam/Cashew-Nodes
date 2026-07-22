@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -17,6 +17,7 @@ concurrency:
 
 jobs:
   deploy:
+    if: github.ref_name == 'For_5.1_NPR'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -40,6 +41,73 @@ jobs:
           tar -xJf "$RUNNER_TEMP/$blender_archive" -C "$RUNNER_TEMP"
           echo "$RUNNER_TEMP/blender-${blender_version}-linux-x64" >> "$GITHUB_PATH"
 
+      - name: Build current extension and clean old Cashew Nodes packages
+        id: package
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(sed -n 's/^version = "\([^"]*\)"$/\1/p' blender_manifest.toml)"
+          branch_name="$GITHUB_REF_NAME"
+          archive="Addon_releases/5.1/Cashew_Nodes_${version}_${branch_name}.zip"
+          test -n "$version"
+          mkdir -p Addon_releases/5.1
+
+          blender --background --factory-startup \
+            --command extension build \
+            --source-dir="$GITHUB_WORKSPACE" \
+            --output-filepath="$GITHUB_WORKSPACE/$archive"
+
+          python - <<'PY'
+          import re
+          import tomllib
+          import zipfile
+          from pathlib import Path
+
+          def version(path):
+              try:
+                  with zipfile.ZipFile(path) as package:
+                      manifest = next(
+                          name for name in package.namelist()
+                          if Path(name).name == "blender_manifest.toml"
+                      )
+                      value = tomllib.loads(
+                          package.read(manifest).decode("utf-8")
+                      )["version"]
+                      return tuple(int(part) for part in value.split("."))
+              except (KeyError, StopIteration, ValueError, tomllib.TOMLDecodeError):
+                  match = re.search(r"(?<!\d)\d+(?:\.\d+)+", path.stem)
+                  return tuple(int(part) for part in match.group().split(".")) if match else ()
+
+          for directory in sorted({path.parent for path in Path("Addon_releases").rglob("*.zip")}):
+              packages = sorted(
+                  path for path in directory.glob("*.zip")
+                  if path.stem.casefold().replace("-", "_").startswith("cashew_nodes")
+              )
+              if len(packages) < 2:
+                  continue
+              keep = max(packages, key=lambda path: (version(path), path.name))
+              for package in packages:
+                  if package != keep:
+                      package.unlink()
+          PY
+
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "archive=$archive" >> "$GITHUB_OUTPUT"
+
+      - name: Persist latest packaged artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- Addon_releases \
+            && [[ -z "$(git ls-files --others --exclude-standard -- Addon_releases)" ]]; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A Addon_releases
+          git commit -m "发布 Cashew Nodes ${{ steps.package.outputs.version }}"
+          git push origin "HEAD:$GITHUB_REF_NAME"
+
       - name: Prepare repository files
         shell: bash
         run: |
@@ -47,7 +115,7 @@ jobs:
           mkdir -p site/extensions site/assets
 
           while IFS= read -r -d '' archive; do
-            if [[ "$archive" == "Addon_releases/archive/Cashew-Nodes  Alpha 1.0 For 3.6.zip" ]]; then
+            if [[ "$archive" == "Addon_releases/archive/Cashew_Nodes  Alpha 1.0 For 3.6.zip" ]]; then
               continue
             fi
 
@@ -113,7 +181,7 @@ jobs:
               path.name
               for path in Path("Addon_releases").rglob("*.zip")
               if path.as_posix()
-              != "Addon_releases/archive/Cashew-Nodes  Alpha 1.0 For 3.6.zip"
+              != "Addon_releases/archive/Cashew_Nodes  Alpha 1.0 For 3.6.zip"
           }
           published_archives = {path.name for path in extension_dir.glob("*.zip")}
           assert published_archives == expected_archives, (
@@ -161,3 +229,33 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          release_tag="v${{ steps.package.outputs.version }}-${GITHUB_REF_NAME}"
+          target_commit="$(git rev-parse HEAD)"
+          mapfile -d '' release_assets < <(
+            find Addon_releases -type f -name '*.zip' -print0 |
+              while IFS= read -r -d '' asset; do
+                case "$(basename "$asset")" in
+                  Cashew_Nodes*.zip) printf '%s\0' "$asset" ;;
+                esac
+              done |
+              sort -z
+          )
+          test "${#release_assets[@]}" -gt 0
+
+          if gh release view "$release_tag" >/dev/null 2>&1; then
+            gh release upload "$release_tag" "${release_assets[@]}" --clobber
+            gh release edit "$release_tag" \
+              --title "Cashew Nodes ${{ steps.package.outputs.version }} ($GITHUB_REF_NAME)"
+          else
+            gh release create "$release_tag" "${release_assets[@]}" \
+              --target "$target_commit" \
+              --title "Cashew Nodes ${{ steps.package.outputs.version }} ($GITHUB_REF_NAME)" \
+              --generate-notes
+          fi
