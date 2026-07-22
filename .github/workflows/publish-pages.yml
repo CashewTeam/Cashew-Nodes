@@ -51,11 +51,25 @@ jobs:
           archive="Addon_releases/5.1/Cashew_Nodes_${version}_${branch_name}.zip"
           test -n "$version"
           mkdir -p Addon_releases/5.1
+          build_source="$RUNNER_TEMP/cashew-nodes-source"
+          mkdir -p "$build_source"
+          rsync -a --exclude='Addon_releases/' "$GITHUB_WORKSPACE/" "$build_source/"
 
           blender --background --factory-startup \
             --command extension build \
-            --source-dir="$GITHUB_WORKSPACE" \
+            --source-dir="$build_source" \
             --output-filepath="$GITHUB_WORKSPACE/$archive"
+
+          python - "$archive" <<'PY'
+          import sys
+          import zipfile
+
+          with zipfile.ZipFile(sys.argv[1]) as package:
+              assert not any(
+                  "Addon_releases" in member.split("/")
+                  for member in package.namelist()
+              ), "Addon_releases must not be included in the extension package"
+          PY
 
           python - <<'PY'
           import re
