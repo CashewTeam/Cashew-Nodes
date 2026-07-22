@@ -141,6 +141,49 @@ jobs:
             --command extension server-generate \
             --repo-dir="$GITHUB_WORKSPACE/site/extensions" \
             --html
+          python - <<'PY'
+          import json
+          from functools import cmp_to_key
+          from pathlib import Path
+
+          def semver(value):
+              core, _, prerelease = value.partition("-")
+              core = tuple(int(part) for part in core.split("+", 1)[0].split("."))
+              identifiers = [] if not prerelease else prerelease.split("+", 1)[0].split(".")
+              return core, identifiers
+
+          def compare_semver(left, right):
+              left_core, left_pre = semver(left)
+              right_core, right_pre = semver(right)
+              if left_core != right_core:
+                  return (left_core > right_core) - (left_core < right_core)
+              if not left_pre or not right_pre:
+                  return (bool(left_pre) < bool(right_pre)) - (bool(left_pre) > bool(right_pre))
+              for left_id, right_id in zip(left_pre, right_pre):
+                  if left_id == right_id:
+                      continue
+                  left_num = left_id.isdigit()
+                  right_num = right_id.isdigit()
+                  if left_num and right_num:
+                      return (int(left_id) > int(right_id)) - (int(left_id) < int(right_id))
+                  if left_num != right_num:
+                      return -1 if left_num else 1
+                  return (left_id > right_id) - (left_id < right_id)
+              return (len(left_pre) > len(right_pre)) - (len(left_pre) < len(right_pre))
+
+          def compare(left, right):
+              if left["id"] != right["id"]:
+                  return (left["id"] > right["id"]) - (left["id"] < right["id"])
+              return -compare_semver(left["version"], right["version"])
+
+          index_path = Path("site/extensions/index.json")
+          index = json.loads(index_path.read_text(encoding="utf-8"))
+          index["data"].sort(key=cmp_to_key(compare))
+          index_path.write_text(
+              json.dumps(index, ensure_ascii=False, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          PY
 
       - name: Generate remote asset listing
         shell: bash
@@ -207,6 +250,20 @@ jobs:
               listed_archives,
               expected_archives,
           )
+
+          def semver_core(value):
+              return tuple(
+                  int(part)
+                  for part in value.split("-", 1)[0].split("+", 1)[0].split(".")
+              )
+
+          for previous, current in zip(extension_index["data"], extension_index["data"][1:]):
+              if previous["id"] == current["id"]:
+                  assert semver_core(previous["version"]) >= semver_core(current["version"]), (
+                      previous["id"],
+                      previous["version"],
+                      current["version"],
+                  )
 
           asset_root = root / "assets"
           asset_index = asset_root / "_v1/asset-index.json"
